@@ -639,13 +639,23 @@
       }
 
       .result-scoreline {
+        display: grid;
         width: min(100%, 320px);
+        gap: 11px;
+        align-items: stretch;
         margin: 0 auto 23px;
         padding: 14px 16px;
         border: 1px solid var(--line);
         border-radius: 15px;
         background: var(--card-soft);
         text-align: left;
+      }
+
+      .result-score-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
       }
 
       .result-score-label {
@@ -660,6 +670,20 @@
         font-weight: 850;
         letter-spacing: -0.04em;
         font-variant-numeric: tabular-nums;
+      }
+
+      .result-record-status {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .result-record-status.is-record {
+        color: var(--green);
+      }
+
+      .result-record-status.is-warning {
+        color: var(--red);
       }
 
       .result-track {
@@ -940,11 +964,52 @@
         },
       ];
 
+      const PERSONAL_BEST_STORAGE_KEY = "cosmic-field-guide.personal-best";
       const panel = document.querySelector("#quiz-panel");
       let currentQuestion = 0;
       let score = 0;
       let hasAnswered = false;
       let advanceTimer;
+      let personalBestStorageAvailable = true;
+
+      function loadPersonalBest() {
+        try {
+          const storedScore = window.localStorage.getItem(PERSONAL_BEST_STORAGE_KEY);
+          if (storedScore === null || !/^\d+$/.test(storedScore)) return null;
+
+          const parsedScore = Number(storedScore);
+          return Number.isInteger(parsedScore) && parsedScore <= questions.length
+            ? parsedScore
+            : null;
+        } catch {
+          personalBestStorageAvailable = false;
+          return null;
+        }
+      }
+
+      let bestScore = loadPersonalBest();
+
+      function updatePersonalBest() {
+        if (!personalBestStorageAvailable) {
+          return { status: "unavailable", score: null };
+        }
+
+        if (bestScore !== null && score <= bestScore) {
+          return {
+            status: score === bestScore ? "tied" : "lower",
+            score: bestScore,
+          };
+        }
+
+        try {
+          window.localStorage.setItem(PERSONAL_BEST_STORAGE_KEY, String(score));
+          bestScore = score;
+          return { status: "new", score: bestScore };
+        } catch {
+          personalBestStorageAvailable = false;
+          return { status: "save-failed", score };
+        }
+      }
 
       function renderQuestion() {
         const item = questions[currentQuestion];
@@ -1076,10 +1141,31 @@
       }
 
       function renderResults() {
+        const personalBest = updatePersonalBest();
         const ratio = score / questions.length;
         let reaction;
         let title;
         let message;
+        let personalBestLabel = "Personal best";
+        let personalBestMessage;
+        let personalBestClass = "";
+
+        if (personalBest.status === "new") {
+          personalBestMessage = "New personal best! Saved on this device.";
+          personalBestClass = "is-record";
+        } else if (personalBest.status === "tied") {
+          personalBestMessage = "You tied your personal best.";
+        } else if (personalBest.status === "lower") {
+          personalBestMessage = "Your personal best remains unchanged.";
+        } else if (personalBest.status === "save-failed") {
+          personalBestLabel = "Best score this run";
+          personalBestMessage = "New personal best this run, but it could not be saved on this device.";
+          personalBestClass = "is-warning";
+        } else {
+          personalBestLabel = "Best score unavailable";
+          personalBestMessage = "Browser storage is unavailable. Your best score could not be loaded or saved.";
+          personalBestClass = "is-warning";
+        }
 
         if (score === questions.length) {
           reaction = "🏆";
@@ -1106,8 +1192,19 @@
             <h2 class="result-title" id="result-title">${title}</h2>
             <p class="result-copy">${message}</p>
             <div class="result-scoreline">
-              <span class="result-score-label">Your final score</span>
-              <span class="result-score">${score}<span aria-hidden="true"> / </span>${questions.length}</span>
+              <div class="result-score-row">
+                <span class="result-score-label">Your final score</span>
+                <span class="result-score">${score}<span aria-hidden="true"> / </span>${questions.length}</span>
+              </div>
+              <div class="result-score-row">
+                <span class="result-score-label">${personalBestLabel}</span>
+                <span class="result-score">${
+                  personalBest.score === null
+                    ? "Unavailable"
+                    : `${personalBest.score}<span aria-hidden="true"> / </span>${questions.length}`
+                }</span>
+              </div>
+              <p class="result-record-status ${personalBestClass}" role="status">${personalBestMessage}</p>
             </div>
             <div
               class="result-track"
