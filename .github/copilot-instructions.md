@@ -4,7 +4,7 @@
 
 - Preview the app by opening `index.html` directly in a browser. It is self-contained and has no build step.
 - There are no automated test or lint commands configured.
-- Single browser smoke path: answer question 1 with **B** (correct), question 2 with **A** (incorrect), then answer the remaining questions correctly. Confirm the score changes to 1, stays at 1 after the wrong answer, feedback reveals the correct choice, and the results screen shows 9/10 with the explorer reaction. Use the replay button to check reset behavior.
+- Single browser smoke path: clear `cosmic-field-guide.personal-best`, answer question 1 with **B** (correct), question 2 with **A** (incorrect), then answer the remaining questions correctly. Confirm the score changes to 1, stays at 1 after the wrong answer, feedback reveals the correct choice, and the results screen shows 9/10 with the explorer reaction and a saved 9/10 personal best. Use replay to confirm the current score resets to 0 while the best remains 9; repeat the run to confirm a tie, then finish a lower-scoring run to confirm the best does not decrease. If practical, simulate unavailable browser storage and verify the quiz completes with an explicit warning.
 
 ## Architecture
 
